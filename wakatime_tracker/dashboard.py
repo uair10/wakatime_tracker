@@ -1,4 +1,5 @@
 import logging
+import time
 
 import streamlit as st
 import pandas as pd
@@ -6,6 +7,7 @@ import plotly.express as px
 from datetime import datetime, timedelta
 
 from wakatime_tracker.database.manager import DatabaseManager
+from wakatime_tracker.wakatime_service import WakaTimeService
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +100,9 @@ def main():
         df = df[df["project_name"].isin(selected_projects)]
 
     # Вкладки
-    tab1, tab2, tab3, tab4 = st.tabs(["Overview", "Time analysis", "Project details", "Raw data"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(
+        ["Overview", "Time analysis", "Project details", "Raw data", "Data collection"]
+    )
 
     with tab1:
         show_overview(df, start_date, end_date)
@@ -111,6 +115,9 @@ def main():
 
     with tab4:
         show_raw_data(df)
+
+    with tab5:
+        show_data_collection()
 
 
 def show_overview(df, start_date, end_date):
@@ -446,6 +453,48 @@ def show_raw_data(df):
     # Скачивание данных
     csv = display_df.to_csv(index=False)
     st.download_button(label="Download data as CSV", data=csv, file_name="wakatime_data.csv", mime="text/csv")
+
+
+def show_data_collection():
+    st.header("Data collection")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        collect_start = st.date_input("Start date", datetime.now().date() - timedelta(days=7), key="collect_start")
+    with col2:
+        collect_end = st.date_input("End date", datetime.now().date() - timedelta(days=1), key="collect_end")
+
+    if st.button("Collect data", type="primary"):
+        if collect_start > collect_end:
+            st.error("Start date must be before end date")
+            return
+
+        service = WakaTimeService()
+
+        total_days = (collect_end - collect_start).days + 1
+        progress_bar = st.progress(0)
+        status = st.empty()
+        results = []
+
+        current = collect_start
+        for i in range(total_days):
+            date_str = current.strftime("%Y-%m-%d")
+            status.text(f"Collecting {date_str}...")
+            success = service.collect_data_for_date(date_str)
+            results.append({"Date": date_str, "Status": "✓" if success else "✗"})
+            progress_bar.progress((i + 1) / total_days)
+            current += timedelta(days=1)
+            if i < total_days - 1:
+                time.sleep(1)
+
+        status.empty()
+        success_count = sum(1 for r in results if r["Status"] == "✓")
+        if success_count == total_days:
+            st.success(f"Collected data for all {total_days} days")
+        else:
+            st.warning(f"Collected {success_count}/{total_days} days")
+
+        st.dataframe(pd.DataFrame(results), hide_index=True, use_container_width=True)
 
 
 if __name__ == "__main__":
