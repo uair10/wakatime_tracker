@@ -9,16 +9,15 @@ class WakaTimeClient:
     def __init__(self):
         self.config = load_config().wakatime
         self.base_url = self.config.base_url
-        self.headers = {"Authorization": f"Basic {self.config.api_key}"}
 
     def get_summaries(self, start_date: str, end_date: str) -> dict | None:
         """Получение сводки за период"""
 
         url = f"{self.base_url}/users/{self.config.user_id}/summaries"
-        params = {"start": start_date, "end": end_date}
+        params = {"start": start_date, "end": end_date, "api_key": self.config.api_key}
 
         try:
-            response = requests.get(url, headers=self.headers, params=params, timeout=30)
+            response = requests.get(url, params=params, timeout=30)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:

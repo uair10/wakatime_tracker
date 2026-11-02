@@ -6,7 +6,9 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
 
+from wakatime_tracker.config import load_config
 from wakatime_tracker.database.manager import DatabaseManager
+from wakatime_tracker.logger import configure_logging
 from wakatime_tracker.wakatime_service import WakaTimeService
 
 logger = logging.getLogger(__name__)
@@ -67,6 +69,7 @@ db = get_db()
 
 
 def main():
+    configure_logging(load_config().logging)
     st.title("⏱️ WakaTime analytics dashboard")
 
     # Сайдбар с фильтрами
